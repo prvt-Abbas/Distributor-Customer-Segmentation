@@ -1,5 +1,10 @@
 """
-Distributor Customer Segmentation — Streamlit app, v4 (P37, Ali Abbas)
+Distributor Customer Segmentation — Streamlit app, v5 (P37, Ali Abbas)
+Font-colour fix in v5: EVERY font is now light on the black background,
+inside this file itself — not only in .streamlit/config.toml. That covers
+Streamlit's own widget labels, input / select / file-uploader text,
+buttons, the data table, and all chart text (matplotlib rcParams), so
+nothing stays dark-on-black even if config.toml is not replaced.
 Dashboard changes in v4: BLACK theme — black background (#000000),
 dark cards (#171c23), light text (#e6e9ee), accent #6f8dff, brighter
 segment colours for dark mode. Charts, tables and cards all recoloured
@@ -37,6 +42,16 @@ import matplotlib
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 from sklearn.decomposition import PCA
+
+# v5: ALL chart fonts light on black, set once here so every figure
+# (PCA map, category bars, K-chart) inherits them.
+plt.rcParams.update({
+    "text.color": "#e6e9ee", "axes.labelcolor": "#e6e9ee",
+    "xtick.color": "#8b95a5", "ytick.color": "#8b95a5",
+    "axes.edgecolor": "#272e38", "figure.facecolor": "#171c23",
+    "axes.facecolor": "#171c23", "savefig.facecolor": "#171c23",
+    "legend.labelcolor": "#e6e9ee",
+})
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "src"))
@@ -94,6 +109,26 @@ table.prof tr:last-child td { border: 0; }
        background: #171c23; color: #e6e9ee; }
 [data-testid="stDataFrame"] { border: 1px solid #272e38; border-radius: 8px; }
 h1, h2, h3 { color: #e6e9ee; }
+/* v5: ALL Streamlit widget fonts light on black — these are the ones
+   the custom cards above do NOT cover, so without them labels stayed
+   dark-on-black. Forced here so the app works even without config.toml. */
+.stApp p, .stApp span, .stApp div, .stApp li { color: #e6e9ee; }
+.stApp .bc, .stApp small, .stApp em { color: #8b95a5; }
+[data-testid="stWidgetLabel"] p, [data-testid="stWidgetLabel"] label,
+label, .stMarkdown label { color: #e6e9ee !important; }
+input, select, textarea { color: #e6e9ee !important; background: #171c23 !important; }
+input::placeholder { color: #8b95a5 !important; }
+[data-testid="stTextInput"] input, [data-testid="stNumberInput"] input,
+[data-testid="stSelectbox"] div, [data-testid="stFileUploader"] div,
+[data-testid="stFileUploader"] span, [data-testid="stFileUploader"] p { color: #e6e9ee; }
+.stButton > button { color: #e6e9ee !important; background: #171c23 !important;
+  border: 1px solid #272e38 !important; }
+.stButton > button[kind="primary"], .stButton > button[data-testid="stBaseButton-primary"] {
+  background: #6f8dff !important; color: #ffffff !important; border-color: #6f8dff !important; }
+[data-testid="stDownloadButton"] > button { color: #e6e9ee !important;
+  background: #171c23 !important; border: 1px solid #272e38 !important; }
+[data-testid="stDataFrame"] * { color: #e6e9ee; }
+[data-testid="stAlert"] * { color: #e6e9ee; }
 </style>
 """
 st.markdown(CSS, unsafe_allow_html=True)
