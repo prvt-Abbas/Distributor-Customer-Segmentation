@@ -1,13 +1,18 @@
 """
-Distributor Customer Segmentation — Streamlit app, v3 (P37, Ali Abbas)
+Distributor Customer Segmentation — Streamlit app, v4 (P37, Ali Abbas)
+Dashboard changes in v4: BLACK theme — black background (#000000),
+dark cards (#171c23), light text (#e6e9ee), accent #6f8dff, brighter
+segment colours for dark mode. Charts, tables and cards all recoloured
+to match; Streamlit theme in .streamlit/config.toml is now dark too.
 Dashboard changes in v3: Export downloads the CSV, Stability ARI is read
 live from k_selection.csv, 3 segment cards added under the KPIs, and a
 Top 5 customers by total spend table added under the Segments table.
 
 Rebuilt to match `Segmentation · Professional Screens.html`:
   Dashboard  |  Customers  |  Score  |  Model
-  Inter font, #f6f7f9 background, white cards, accent #2f5bea,
-  segment colours: 0 purple #7c5cd6, 1 orange #e08a1e, 2 teal #12a594.
+  Inter font, BLACK background (#000000), dark cards (#171c23),
+  accent #6f8dff, segment colours: 0 light purple #a78bfa,
+  1 amber #f59e0b, 2 teal #2dd4bf (v4 dark theme).
 
 Corrections to the HTML mock (checked against the trained model):
   * Total annual spend is 14.6M m.u., not 14.2M (sum of all 6 spend
@@ -37,8 +42,13 @@ ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "src"))
 from predict import SPEND, load_model, load_profiles, predict  # noqa: E402
 
-SEG_COLOURS = ["#7c5cd6", "#e08a1e", "#12a594"]
-ACCENT = "#2f5bea"
+SEG_COLOURS = ["#a78bfa", "#f59e0b", "#2dd4bf"]  # brighter for black background
+ACCENT = "#6f8dff"
+PANEL = "#171c23"   # dark card background
+INK = "#e6e9ee"     # light text on black
+MUTED = "#8b95a5"   # grey text on black
+LINE = "#272e38"    # dark borders / gridlines
+HOVER = "#1e242d"   # highlighted row / hover background
 REGION_NAMES = {1: "Lisbon", 2: "Oporto", 3: "Other"}
 CHANNEL_NAMES = {1: "Horeca", 2: "Retail"}
 PAGE_SIZE = 12
@@ -50,39 +60,40 @@ CSS = """
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
 <style>
 html, body, [class*="css"] { font-family: Inter, system-ui, sans-serif; }
-.stApp { background: #f6f7f9; color: #1c2430; }
+.stApp { background: #000000; color: #e6e9ee; }
 header[data-testid="stHeader"] { display: none; }
 .block-container { padding-top: 0 !important; max-width: 1240px; }
-.box { background: #fff; border: 1px solid #e4e7ec; border-radius: 8px; }
+.box { background: #171c23; border: 1px solid #272e38; border-radius: 8px; color: #e6e9ee; }
 .kp { display: grid; grid-template-columns: repeat(4, 1fr); }
-.kp > div { padding: 14px 18px; border-right: 1px solid #e4e7ec; }
+.kp > div { padding: 14px 18px; border-right: 1px solid #272e38; }
 .kp > div:last-child { border: 0; }
-.kp small { color: #667085; display: block; }
-.kp b { font-size: 22px; font-weight: 600; }
-.kp em { font-style: normal; color: #667085; font-size: 12px; margin-left: 6px; }
-.bh { padding: 12px 16px; border-bottom: 1px solid #e4e7ec; display: flex;
+.kp small { color: #8b95a5; display: block; }
+.kp b { font-size: 22px; font-weight: 600; color: #e6e9ee; }
+.kp em { font-style: normal; color: #8b95a5; font-size: 12px; margin-left: 6px; }
+.bh { padding: 12px 16px; border-bottom: 1px solid #272e38; display: flex;
       justify-content: space-between; align-items: center; }
-.bh b { font-weight: 600; }
-.bc { color: #667085; font-size: 12px; }
-table.prof { border-collapse: collapse; width: 100%; font-size: 13px; }
-table.prof th { font-weight: 500; color: #667085; text-align: left;
-                padding: 8px 14px; border-bottom: 1px solid #e4e7ec; background: #f6f7f9; }
-table.prof td { padding: 9px 14px; border-bottom: 1px solid #e4e7ec; }
+.bh b { font-weight: 600; color: #e6e9ee; }
+.bc { color: #8b95a5; font-size: 12px; }
+table.prof { border-collapse: collapse; width: 100%; font-size: 13px; color: #e6e9ee; }
+table.prof th { font-weight: 500; color: #8b95a5; text-align: left;
+                padding: 8px 14px; border-bottom: 1px solid #272e38; background: #0f1318; }
+table.prof td { padding: 9px 14px; border-bottom: 1px solid #272e38; }
 table.prof tr:last-child td { border: 0; }
 .r { text-align: right; font-variant-numeric: tabular-nums; }
 .dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; margin-right: 7px; }
-.mb { height: 6px; width: 90px; background: #e4e7ec; border-radius: 3px;
+.mb { height: 6px; width: 90px; background: #272e38; border-radius: 3px;
       display: inline-block; vertical-align: middle; margin-right: 8px; overflow: hidden; }
 .mb i { display: block; height: 100%; }
 .kv div { display: flex; justify-content: space-between; padding: 7px 0;
-          border-bottom: 1px solid #e4e7ec; gap: 16px; }
+          border-bottom: 1px solid #272e38; gap: 16px; }
 .kv div:last-child { border: 0; }
-.kv span { color: #667085; }
-.chip { display: inline-block; padding: 1px 8px; border: 1px solid #e4e7ec;
-        border-radius: 4px; font-size: 12px; background: #fff; }
-.out { padding: 12px 14px; border: 1px solid #e4e7ec; border-radius: 6px;
-       background: #fff; }
-[data-testid="stDataFrame"] { border: 1px solid #e4e7ec; border-radius: 8px; }
+.kv span { color: #8b95a5; }
+.chip { display: inline-block; padding: 1px 8px; border: 1px solid #272e38;
+        border-radius: 4px; font-size: 12px; background: #171c23; color: #e6e9ee; }
+.out { padding: 12px 14px; border: 1px solid #272e38; border-radius: 6px;
+       background: #171c23; color: #e6e9ee; }
+[data-testid="stDataFrame"] { border: 1px solid #272e38; border-radius: 8px; }
+h1, h2, h3 { color: #e6e9ee; }
 </style>
 """
 st.markdown(CSS, unsafe_allow_html=True)
@@ -164,7 +175,7 @@ with h2:
                       use_container_width=True, on_click=go, args=(key,))
 with h3:
     st.markdown('<div style="text-align:right;padding-top:6px"><span style="display:inline-grid;place-items:center;'
-                'width:28px;height:28px;border-radius:50%;background:#f2f4f7;border:1px solid #e4e7ec;'
+                'width:28px;height:28px;border-radius:50%;background:#1e242d;border:1px solid #272e38;color:#e6e9ee;'
                 'font-size:11px;font-weight:600">AA</span></div>', unsafe_allow_html=True)
 
 search = st.text_input("Search customers", placeholder="Search customers",
@@ -175,18 +186,23 @@ if search and search != st.session_state.q:
 st.divider()
 
 # ---------------------------------------------------------------- charts
+def _dark_ax(ax):
+    ax.tick_params(colors="#8b95a5", labelcolor="#8b95a5")
+    ax.xaxis.label.set_color("#8b95a5"); ax.yaxis.label.set_color("#8b95a5")
+    return ax
+
 def pca_fig():
     pts, var, labels = _pca_points()
     fig, ax = plt.subplots(figsize=(7.2, 3.9))
-    fig.patch.set_facecolor("white"); ax.set_facecolor("white")
+    fig.patch.set_facecolor("#171c23"); ax.set_facecolor("#171c23")
     for i in range(3):
         ax.scatter(pts[labels == i, 0], pts[labels == i, 1], s=22,
                    c=SEG_COLOURS[i], alpha=0.62, label=SEG_NAMES[i])
     ax.set_xlabel(f"PC1 ({var[0]:.0%})"); ax.set_ylabel(f"PC2 ({var[1]:.0%})")
-    ax.grid(color="#e4e7ec", linewidth=0.6); ax.set_axisbelow(True)
+    ax.grid(color="#272e38", linewidth=0.6); ax.set_axisbelow(True); _dark_ax(ax)
     for s in ax.spines.values():
         s.set_visible(False)
-    ax.legend(frameon=False, fontsize=8, loc="lower center",
+    ax.legend(frameon=False, fontsize=8, loc="lower center", labelcolor="#e6e9ee",
               bbox_to_anchor=(0.5, -0.22), ncol=3)
     plt.tight_layout()
     return fig
@@ -197,13 +213,13 @@ def category_fig():
     labels = ["Fresh", "Milk", "Grocery", "Frozen", "Det. paper", "Delicassen"]
     mx = prof[cats].to_numpy().max()
     fig, ax = plt.subplots(figsize=(5.2, 3.9))
-    fig.patch.set_facecolor("white"); ax.set_facecolor("white")
+    fig.patch.set_facecolor("#171c23"); ax.set_facecolor("#171c23")
     for ci, cat in enumerate(cats):
         y = len(cats) - ci
         for k in range(3):
             ax.barh(y - 0.28 + k * 0.28, prof.loc[k, cat] / mx,
                     height=0.22, color=SEG_COLOURS[k])
-        ax.text(0, y + 0.42, labels[ci], fontsize=9, color="#667085", va="bottom")
+        ax.text(0, y + 0.42, labels[ci], fontsize=9, color="#8b95a5", va="bottom")
     ax.set_xlim(0, 1.05); ax.set_ylim(0.3, len(cats) + 0.7)
     ax.set_yticks([]); ax.set_xticks([])
     for s in ax.spines.values():
@@ -213,16 +229,16 @@ def category_fig():
 
 def k_fig():
     fig, ax = plt.subplots(figsize=(7.2, 3.4))
-    fig.patch.set_facecolor("white"); ax.set_facecolor("white")
+    fig.patch.set_facecolor("#171c23"); ax.set_facecolor("#171c23")
     ax.axvspan(2.5, 3.5, color=ACCENT, alpha=0.08)
     ax.plot(k_table["k"], k_table["silhouette"], marker="o", color=ACCENT, label="Silhouette")
     ax.plot(k_table["k"], k_table["stability_ari_mean"], marker="o",
             color=SEG_COLOURS[1], label="Stability ARI")
     ax.set_xticks(k_table["k"]); ax.set_xlabel("K")
-    ax.grid(color="#e4e7ec", linewidth=0.6); ax.set_axisbelow(True)
+    ax.grid(color="#272e38", linewidth=0.6); ax.set_axisbelow(True); _dark_ax(ax)
     for s in ax.spines.values():
         s.set_visible(False)
-    ax.legend(frameon=False, fontsize=9, loc="lower center",
+    ax.legend(frameon=False, fontsize=9, loc="lower center", labelcolor="#e6e9ee",
               bbox_to_anchor=(0.5, -0.22), ncol=2)
     plt.tight_layout()
     return fig
@@ -439,7 +455,7 @@ elif st.session_state.page == "score":
             st.markdown(
                 f'<div class="out" style="border-left:3px solid {SEG_COLOURS[k]}">'
                 f"<b>{seg_tag(k)}</b>"
-                f"<div style='color:#667085;margin:2px 0 6px'>Total {fmt(one['total_spend'])} m.u.</div>"
+                f"<div style='color:#8b95a5;margin:2px 0 6px'>Total {fmt(one['total_spend'])} m.u.</div>"
                 f"{one['action_suggestion']}</div>", unsafe_allow_html=True)
         st.markdown("</div>", unsafe_allow_html=True)
 
@@ -463,7 +479,7 @@ elif st.session_state.page == "model":
         st.markdown('<div class="box"><div class="bh"><b>K selection</b></div>', unsafe_allow_html=True)
         rows = ""
         for _, r in k_table.iterrows():
-            hl = ' style="background:#f2f4f7;font-weight:600"' if int(r["k"]) == 3 else ""
+            hl = ' style="background:#1e242d;font-weight:600"' if int(r["k"]) == 3 else ""
             rows += (f"<tr{hl}><td>{int(r['k'])}</td><td class='r'>{r['silhouette']:.3f}</td>"
                      f"<td class='r'>{r['davies_bouldin']:.3f}</td>"
                      f"<td class='r'>{r['stability_ari_mean']:.3f}</td></tr>")
