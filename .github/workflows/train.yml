@@ -1,0 +1,53 @@
+# CI: train + evaluate + register to MLflow (Staging only — never Production)
+# Runs on every push / PR to main.
+# Production promotion is a SEPARATE workflow (promote.yml) that needs a
+# human to approve it in the GitHub "production" environment.
+name: Train and register model
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  train:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+      - name: Fetch dataset (UCI id=292)
+        run: python src/fetch_data.py
+      - name: Clustering experiments (K=2..8, silhouette + stability)
+        run: python src/experiment.py
+      - name: Train final model + log to MLflow
+        run: python src/train.py
+      - name: Quality gate — fail if the model is too weak to stage
+        run: |
+          python - <<'PY'
+          import json
+          p = json.load(open("models/segment_profiles.json"))
+          assert p["silhouette"] >= 0.20, f"silhouette too low: {p['silhouette']}"
+          assert p["k"] == 3, f"expected K=3, got {p['k']}"
+          print(f"Quality gate PASSED: silhouette={p['silhouette']}, K={p['k']}")
+          PY
+      - name: Register model version as Staging
+        # The training run already registered "wholesale-segmentation".
+        # This step moves the newest version to Staging — Production is
+        # deliberately NOT touched here.
+        run: python scripts/promote.py --to Staging --latest
+        env:
+          MLFLOW_TRACKING_URI: sqlite:///mlflow.db
+      - name: Upload results
+        uses: actions/upload-artifact@v4
+        with:
+          name: training-results
+          path: |
+            results/
+            models/segment_profiles.json
+            mlflow.db

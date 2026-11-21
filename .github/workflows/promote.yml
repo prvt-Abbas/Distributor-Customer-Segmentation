@@ -1,0 +1,41 @@
+# CD: Staging -> Production promotion — MANUAL APPROVAL REQUIRED
+# How to run it:
+#   1. In GitHub: Settings > Environments > New environment "production"
+#      > Required reviewers > add yourself / your teacher > Save.
+#      (That setting is what makes this workflow PAUSE for a human.)
+#   2. Actions > "Promote Staging to Production" > Run workflow
+#      > enter the model version number > Run.
+#   3. GitHub pauses the job and asks a reviewer to Approve / Reject.
+#      Only after approval does the job transition the model to Production.
+#   4. The Streamlit app always loads the Production version when
+#      MLFLOW_MODEL_URI is set (see app/streamlit_app.py note / README).
+name: Promote Staging to Production
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "Registered model version to promote (e.g. 1)"
+        required: true
+        type: string
+
+jobs:
+  promote:
+    runs-on: ubuntu-latest
+    # THIS is the manual-approval gate: the job cannot run until a
+    # required reviewer approves it in the "production" environment.
+    environment:
+      name: production
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+      - name: Promote model version to Production
+        run: python scripts/promote.py --to Production --version "${{ inputs.version }}"
+        env:
+          MLFLOW_TRACKING_URI: sqlite:///mlflow.db
+      - name: Smoke-test the Production model
+        run: python src/predict.py data/sample_customers.csv

@@ -1,0 +1,11 @@
+# Distributor Customer Segmentation — P37 Ali Abbas (DF2-AI-2026-037)
+# Python 3.10+ recommended
+pandas>=2.0
+numpy>=1.24
+scikit-learn>=1.3
+ucimlrepo>=0.0.7
+matplotlib>=3.7
+joblib>=1.3
+streamlit>=1.32
+mlflow>=2.10
+openpyxl>=3.1   # for Excel upload in Streamlit (optional)
