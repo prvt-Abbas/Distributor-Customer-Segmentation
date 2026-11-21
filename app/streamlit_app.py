@@ -1,5 +1,8 @@
 """
-Distributor Customer Segmentation — Streamlit app, v2 (P37, Ali Abbas)
+Distributor Customer Segmentation — Streamlit app, v3 (P37, Ali Abbas)
+Dashboard changes in v3: Export downloads the CSV, Stability ARI is read
+live from k_selection.csv, 3 segment cards added under the KPIs, and a
+Top 5 customers by total spend table added under the Segments table.
 
 Rebuilt to match `Segmentation · Professional Screens.html`:
   Dashboard  |  Customers  |  Score  |  Model
@@ -234,18 +237,40 @@ if st.session_state.page == "dashboard":
     with c2:
         b1, b2 = st.columns(2)
         with b1:
-            if st.button("Export", use_container_width=True):
-                st.session_state.page = "customers"
-                st.rerun()
+            # CHANGED (v3): Export now downloads the file instead of
+            # just jumping to the Customers page.
+            st.download_button("Export", customers.to_csv(index=False).encode(),
+                               "customers_with_segments.csv", "text/csv",
+                               use_container_width=True)
         with b2:
             st.button("Score new file", type="primary", use_container_width=True,
                       on_click=go, args=("score",))
+    # CHANGED (v3): Stability ARI is now read live from results/k_selection.csv
+    # for K=3, instead of the hard-coded 0.925.
+    stability_ari = float(k_table.loc[k_table["k"] == 3, "stability_ari_mean"].iloc[0])
     st.markdown(
         f'<div class="box kp"><div><small>Customers</small><b>{len(customers)}</b></div>'
         f'<div><small>Total annual spend</small><b>{TOTAL_SPEND / 1e6:.1f}M</b><em>m.u.</em></div>'
         f'<div><small>Silhouette</small><b>{profiles["silhouette"]:.3f}</b></div>'
-        f'<div><small>Stability (ARI)</small><b>0.925</b></div></div>',
+        f'<div><small>Stability (ARI)</small><b>{stability_ari:.3f}</b></div></div>',
         unsafe_allow_html=True)
+    st.write("")
+    # CHANGED (v3): NEW — one card per segment, so the Dashboard answers
+    # "who is this segment?" at a glance, without scrolling to the table.
+    prof_cards = pd.read_csv(ROOT / "results" / "segment_profiles.csv")
+    card_cols = st.columns(3)
+    for k, col in enumerate(card_cols):
+        r = prof_cards.loc[prof_cards["segment"] == k].iloc[0]
+        top_cat = max(SPEND, key=lambda c: r[c])
+        with col:
+            st.markdown(
+                f'<div class="box" style="padding:14px 16px;border-top:3px solid {SEG_COLOURS[k]}">'
+                f"<b>{seg_tag(k)}</b><br>"
+                f"<span style='font-size:22px;font-weight:600'>{int(r['n'])}</span>"
+                f"<span class='bc'> customers · {r['pct']:.1f}%</span><br>"
+                f"<span class='bc'>Avg spend</span> <b>{fmt(r['total_spend_mean'])} m.u.</b><br>"
+                f"<span class='bc'>Buys most</span> {top_cat.replace('_', ' ')} "
+                f"({fmt(r[top_cat])} m.u.)</div>", unsafe_allow_html=True)
     st.write("")
     left, right = st.columns([1.5, 1])
     with left:
@@ -274,6 +299,21 @@ if st.session_state.page == "dashboard":
                 '<th>Share</th><th class="r">Avg spend</th><th class="r">Retail</th>'
                 f'<th>Recommended action</th></tr></thead><tbody>{rows}</tbody></table></div>',
                 unsafe_allow_html=True)
+    st.write("")
+    # CHANGED (v3): NEW — Top 5 customers by total spend. The wholesaler
+    # can see at a glance who the biggest accounts are and which segment
+    # each one belongs to.
+    top5 = customers.sort_values("total_spend", ascending=False).head(5)
+    top_rows = "".join(
+        f"<tr><td>#{int(r['ID']):03d}</td><td>{r['Channel_name']}</td>"
+        f"<td>{r['Region_name']}</td><td class='r'>{fmt(r['total_spend'])}</td>"
+        f"<td>{seg_tag(int(r['segment']))}</td></tr>"
+        for _, r in top5.iterrows())
+    st.markdown('<div class="box"><div class="bh"><b>Top 5 customers by total spend</b>'
+                '<span class="bc">Click a segment in Customers to see all of them</span></div>'
+                '<table class="prof"><thead><tr><th>ID</th><th>Channel</th><th>Region</th>'
+                '<th class="r">Total spend</th><th>Segment</th></tr></thead>'
+                f"<tbody>{top_rows}</tbody></table></div>", unsafe_allow_html=True)
 
 # ---------------------------------------------------------------- Customers
 elif st.session_state.page == "customers":
